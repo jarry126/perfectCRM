@@ -1,0 +1,83 @@
+{% load kingadmin_tags %}
+<!--根据字段，生成字段名+字段里面的值(添加状态为空)-->
+<form class="form-horizontal" method="POST" onsubmit="VerificationBeforeFormSubmit()">{% csrf_token %}
+    {% for field in form_obj %}
+
+      <div class="form-group">
+        <label  class="col-sm-2 control-label">{{ field.label }}</label>
+
+        <div class="col-sm-10">
+            <!--判断，如果filter_horizontal = ['consult_courses',]，那么就执行下面代码-->
+            {% if field.name in admin_class.filter_horizontal %}
+                <!--显示关联表里面的所有对象-->
+                <div class="col-lg-4  ">
+                    <select multiple class="form-control" id="id_{{ field.name }}_from" >  <!--在select标签里面加入multiple可以变成选多个的select标签-->
+                        <!--as  后面的(available_m2m_date)作为前面函数返回的变量-->
+                        {% get_available_m2m_date field.name admin_class form_obj as available_m2m_date %}
+                        {% for obj in  available_m2m_date%}
+                            <option value="{{ obj.id }}" ondblclick="MoveSelectedOption(this, 'id_{{ field.name }}_to')">{{ obj }}</option>
+                        {% endfor %}
+                    </select>
+                    <p><a style="cursor: pointer" onclick="MoveAllElementTo( 'id_{{ field.name }}_from', 'id_{{ field.name }}_to')">Choose All</a></p>
+                </div>
+                <!--显示自己表里面的自己选中的东西-->
+                <div class="col-lg-4">
+                    <select target="save_selected" multiple class="form-control" id="id_{{ field.name }}_to" name="{{ field.name }}">
+                        {% get_selected_m2m_data field.name admin_class form_obj as  selected_m2m_data%}
+                        {% for obj in selected_m2m_data %}
+                            <option value="{{ obj.id }}" ondblclick="MoveSelectedOption(this, 'id_{{ field.name }}_from')">{{ obj }}</option>
+                        {% endfor %}
+                    </select>
+                    <p><a onclick="MoveAllElementTo( 'id_{{ field.name }}_to', 'id_{{ field.name }}_from')" style="cursor: pointer">Choose All</a></p>
+
+                </div>
+
+                <!------->
+            {% else %}
+                    {{ field }}
+                    <span style="color: red">{{ field.errors }}</span>
+
+            {% endif %}
+        </div>
+
+
+      </div>
+    {% endfor %}
+<!--如果字段不可以被修改，那么就执行下面这段代码-->
+    {% if not admin_class.form_add %}
+        {% for field in admin_class.readonly_fields %}
+            <div class="form-group">
+                    <label  class="col-sm-2 control-label">{{ field }}</label>
+                    <div class="col-sm-10">{% get_obj_filed  form_obj field %}</div>
+            </div>
+        {% endfor %}
+    {% endif %}
+<!--保存按钮-->
+    <div class="form-group">
+        <div class=" col-sm-1" >
+          <a class="btn btn-danger" href="{% url 'obj_delete' app_name model_name form_obj.instance.id%}" >Delete</a>
+        </div>
+        <div class="col-sm-offset-11 col-sm-1" >
+          <button type="submit" class="btn btn-info">Save</button>
+        </div>
+    </div>
+    </form>
+
+    <script>
+        function MoveSelectedOption(ele, target_id){
+            var current_select_id = $(ele).parent().attr('id');
+            var option = "<option value='" + $(ele).val() +"'ondblclick=MoveSelectedOption(this,'"+ current_select_id +"') >" + $(ele).text() +"</option>";
+            $('#'+target_id).append(option);
+            $(ele).remove();
+        }
+
+        function VerificationBeforeFormSubmit() {
+            $("select[target] option").prop('selected', true)
+        }
+        
+        function MoveAllElementTo(from_id, to_id) {
+            $('#' + from_id).children().each(function () {
+                MoveSelectedOption(this, to_id)
+            })
+        }
+    </script>
